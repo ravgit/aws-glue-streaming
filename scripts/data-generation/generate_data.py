@@ -1,10 +1,13 @@
 import os
 import io
+import sys
 import json
 import random
 import boto3
+import argparse
 import datetime as dt
 from faker import *
+
 
 
 # Create a client with aws service and region
@@ -49,26 +52,41 @@ class RecordGenerator(object):
 
 # main function
 def main():
-	# Intialize Faker library
-	fake = Faker()
 
-	# Kinesis settings
-	kinesis_client = create_client('kinesis', 'us-east-1')
-	stream_name = "glue_ventilator_stream"
+    parser = argparse.ArgumentParser(description='Faker based streaming data generator')
 
-	# Rate at which records are generated
-	rate = 500
-	generator = RecordGenerator()
+    parser.add_argument('--streamname', action='store', dest='stream_name', help='Provide Kinesis Data Stream name to stream data')
+    parser.add_argument('--region', action='store', dest='region', default='us-east-1')
 
-	# Generates ventilator data
-	while True:
-		fake_ventilator_records = generator.get_ventilator_records(rate, fake)
-		#print (fake_ventilator_records)
-		kinesis_client.put_records(StreamName=stream_name, Records=fake_ventilator_records)
+    args = parser.parse_args()
 
-    #fakeIO = StringIO()
-    #fakeIO.write(str(''.join(dumps_lines(fake_ventilator_records))))
-    #fakeIO.close()
+    #print (args)
+    # Make sure to set your profile here
+    session = boto3.Session(profile_name='ravirala-acct1')
+
+    try:
+    	# Intialize Faker library
+    	fake = Faker()
+
+    	# Kinesis settings
+    	kinesis_client = session.client('kinesis', args.region)
+
+    	# Rate at which records are generated
+    	rate = 500
+    	generator = RecordGenerator()
+
+    	# Generates ventilator data
+    	while True:
+    		fake_ventilator_records = generator.get_ventilator_records(rate, fake)
+    		#print (fake_ventilator_records)
+    		kinesis_client.put_records(StreamName=args.stream_name, Records=fake_ventilator_records)
+        #fakeIO = StringIO()
+        #fakeIO.write(str(''.join(dumps_lines(fake_ventilator_records))))
+        #fakeIO.close()
+
+    except:
+        print("Error:", sys.exc_info()[0])
+        raise
 
 if __name__ == "__main__":
 	# run main
